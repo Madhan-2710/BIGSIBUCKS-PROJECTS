@@ -1,0 +1,73 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, roc_curve, auc
+from sklearn.feature_selection import SelectKBest, f_classif
+
+# Loading the breast cancer dataset
+data = load_breast_cancer()
+X = data.data
+y = data.target
+feature_names = data.feature_names
+
+# Splitting the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Initializing the K-nearest neighbors classifier
+knn = KNeighborsClassifier(n_neighbors=5)
+
+# Training the classifier
+knn.fit(X_train, y_train)
+
+# Making predictions
+y_pred = knn.predict(X_test)
+
+# Evaluating the model
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy:.2f}")
+
+# Generating confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+print("Confusion Matrix:")
+print(cm)
+
+# Plotting confusion matrix
+plt.figure(figsize=(8, 6))
+sns.heatmap(cm, annot=True, cmap='Blues', fmt='g', cbar=False)
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+plt.show()
+
+# Plotting ROC curve and calculating AUC
+y_probs = knn.predict_proba(X_test)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_probs)
+roc_auc = auc(fpr, tpr)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend(loc='lower right')
+plt.show()
+
+# Feature importance after feature selection
+selector = SelectKBest(score_func=f_classif, k=min(10, X_train.shape[1]))
+X_train_selected = selector.fit_transform(X_train, y_train)
+feature_scores = -np.log10(selector.pvalues_)
+sorted_indices = np.argsort(feature_scores)[::-1][:X_train_selected.shape[1]]  # Select top k indices
+
+plt.figure(figsize=(10, 6))
+plt.bar(range(X_train_selected.shape[1]), feature_scores[sorted_indices], align='center')
+plt.xticks(range(X_train_selected.shape[1]), np.array(feature_names)[sorted_indices], rotation=90)
+plt.xlabel('Feature')
+plt.ylabel('Score (-log10 p-value)')
+plt.title('Feature Importance')
+plt.show()
