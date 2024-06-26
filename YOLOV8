@@ -1,0 +1,65 @@
+!pip install torch torchvision
+!pip install ultralytics
+!pip install matplotlib pillow opencv-python
+from google.colab import files
+
+# Upload the model file
+uploaded = files.upload()
+model_path = list(uploaded.keys())[0]  # Get the model file path
+
+# Upload the image file
+uploaded = files.upload()
+image_path = list(uploaded.keys())[0]  # Get the image file path
+import torch
+import numpy as np
+from PIL import Image
+import torchvision.transforms as T
+import matplotlib.pyplot as plt
+import cv2
+from ultralytics import YOLO  # Import YOLO from ultralytics
+
+# Load the YOLOv8 model
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+model = YOLO(model_path)  # Use YOLO class to load the model
+
+# Define transformation
+transform = T.Compose([
+    T.Resize((640, 640)),  # Resize to 640x640
+    T.ToTensor()
+])
+
+# Function to run inference
+def run_inference(image_path):
+    try:
+        # Load image
+        img = Image.open(image_path).convert('RGB')
+
+        # Preprocess image
+        img_tensor = transform(img).unsqueeze(0)  # Add batch dimension
+
+        # Run inference
+        results = model(img_tensor.to(device))
+        predictions = results.pred[0]
+
+        # Process and display results
+        boxes = predictions[:, :4].cpu().numpy()
+        scores = predictions[:, 4].cpu().numpy()
+        labels = predictions[:, 5].cpu().numpy()
+
+        # Display image and results
+        img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        for box, score, label in zip(boxes, scores, labels):
+            if score > 0.5:  # Threshold
+                x1, y1, x2, y2 = box.astype(int)
+                cv2.rectangle(img_cv, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(img_cv, f'{int(label)}: {score:.2f}', (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+        plt.imshow(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+        plt.axis('off')
+        plt.show()
+
+    except Exception as e:
+        print(f"Error during inference: {e}")
+
+# Run inference on the uploaded image
+run_inference(image_path)
