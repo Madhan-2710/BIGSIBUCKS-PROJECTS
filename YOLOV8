@@ -1,6 +1,6 @@
-!pip install torch torchvision
-!pip install ultralytics
-!pip install matplotlib pillow opencv-python
+pip install torch torchvision
+pip install ultralytics
+pip install matplotlib pillow opencv-python
 from google.colab import files
 
 # Upload the model file
