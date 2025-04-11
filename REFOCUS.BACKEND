@@ -1,0 +1,61 @@
+from flask import Flask, request, jsonify
+from datetime import datetime
+from twilio.rest import Client
+
+app = Flask(__name__)
+
+# Twilio credentials (use your own credentials here)
+TWILIO_SID = 'YOUR_TWILIO_ACCOUNT_SID'
+TWILIO_AUTH = 'YOUR_TWILIO_AUTH_TOKEN'
+TWILIO_PHONE = '+1234567890'  # Your Twilio phone number
+
+client = Client(TWILIO_SID, TWILIO_AUTH)
+
+# In-memory storage for simplicity (replace with DB later if needed)
+detection_logs = []
+
+# Route to log detection status
+@app.route('/log', methods=['POST'])
+def log_detection():
+    data = request.json
+    status = data.get('status', 'unknown')
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    detection_logs.append({
+        'status': status,
+        'timestamp': timestamp
+    })
+    return jsonify({
+        'message': 'Status logged successfully.',
+        'status': status,
+        'timestamp': timestamp
+    })
+
+# Route to fetch all detection logs
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    return jsonify(detection_logs)
+
+# Route to send emergency alert
+@app.route('/alert', methods=['POST'])
+def send_alert():
+    data = request.json
+    to_number = data.get('to')
+    message = data.get('message', '⚠️ Emergency! The user may need help.')
+
+    try:
+        msg = client.messages.create(
+            body=message,
+            from_=TWILIO_PHONE,
+            to=to_number
+        )
+        return jsonify({'message': 'Emergency alert sent!', 'sid': msg.sid})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Test route
+@app.route('/', methods=['GET'])
+def index():
+    return "REFOCUS API is running!"
+
+if __name__ == '__main__':
+    app.run(debug=True)
